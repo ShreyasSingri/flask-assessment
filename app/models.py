@@ -36,6 +36,7 @@ class Inventory(db.Model):
 class Request(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     request_date = db.Column(db.DateTime, default = datetime.now(timezone("Asia/Kolkata")))
+    requested_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     quantity = db.Column(db.Numeric, nullable = False)
     blood_group = db.Column(db.Enum("O+","O-","A+","A-","B+","B-","AB+","AB-", name='blood_group_enum'), nullable=False)
     status = db.Column(db.Enum("Requested", "Processing", "Canclled", name = "status_enum"), default = 'Requested')

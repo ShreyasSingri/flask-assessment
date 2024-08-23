@@ -1,10 +1,17 @@
 from flask import Flask
-from .extentions import api, db
-
+import logging
+from config import Config
+from .extentions import api, db, bcrypt, migrate
+from .routes import register_routes
 
 def create_app():
     app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///db.sqlite3'
+    app.config.from_object(Config)
     api.init_app(app)
+    migrate.init_app(app,db)
     db.init_app(app)
+    bcrypt.init_app(app)
+    register_routes(api)
+    logging.basicConfig(filename='app.log', level=logging.ERROR, format='%(asctime)s: %(levelname)s: %(message)s')
+
     return app

@@ -1,4 +1,7 @@
 flask
 flask-restx
+Flask-Migrate
 flask-aqlalchemy
+Flask-JWT-Extended
+Flask-Bcrypt
 python-dotenv

@@ -1,2 +1,4 @@
-/.flaskenv
+/.env
 /env
+/venv
+/app.log
