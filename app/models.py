@@ -16,7 +16,6 @@ class User(db.Model):
     email = db.Column(db.String(120), index=True, unique=True)
     password = db.Column(db.String(128))
     role = db.Column(db.Enum("User","DonorManager","InventoryManager","BankManager","Hospital", name='role_enum'), nullable=False, default="User")
-    refresh_token = db.Column(db.String(128))
 
 
 class BloodDonation(db.Model):
@@ -26,6 +25,7 @@ class BloodDonation(db.Model):
     expiry = db.Column(db.DateTime, default = datetime.now(timezone("Asia/Kolkata"))+ timedelta(days=42))
     quantity = db.Column(db.Numeric, nullable = False)
     blood_group = db.Column(db.Enum("O+","O-","A+","A-","B+","B-","AB+","AB-", name='blood_group_enum'), nullable=False)
+    status = db.Column(db.Enum("Stored", "Supplied", "Expired", name = "blood_status_enum"), default = 'Stored')
     donor = db.relationship('Donor', backref='donations')
 
 class Inventory(db.Model):
@@ -39,5 +39,10 @@ class Request(db.Model):
     requested_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     quantity = db.Column(db.Numeric, nullable = False)
     blood_group = db.Column(db.Enum("O+","O-","A+","A-","B+","B-","AB+","AB-", name='blood_group_enum'), nullable=False)
-    status = db.Column(db.Enum("Requested", "Processing", "Canclled", name = "status_enum"), default = 'Requested')
+    status = db.Column(db.Enum("Requested", "Completed", "Cancelled", name = "status_enum"), default = 'Requested')
     fulfilled_qty = db.Column(db.Numeric, default = 0)
+
+class TokenBlocklist(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    jti = db.Column(db.String(), nullable=True)
+    create_at = db.Column(db.DateTime(), default=datetime.now(timezone("Asia/Kolkata")))
