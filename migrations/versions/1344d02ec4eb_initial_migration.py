@@ -1,8 +1,8 @@
-"""empty message
+"""Initial migration.
 
-Revision ID: c5729feac5c6
+Revision ID: 1344d02ec4eb
 Revises: 
-Create Date: 2024-08-23 15:05:27.949842
+Create Date: 2024-08-26 00:03:15.708357
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'c5729feac5c6'
+revision = '1344d02ec4eb'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -23,7 +23,7 @@ def upgrade():
     sa.Column('name', sa.String(), nullable=True),
     sa.Column('email', sa.String(), nullable=False),
     sa.Column('contact', sa.String(), nullable=False),
-    sa.Column('dob', sa.Date(), nullable=True),
+    sa.Column('age', sa.Integer(), nullable=False),
     sa.Column('blood_group', sa.Enum('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', name='blood_group_enum'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('contact'),
@@ -33,6 +33,12 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('quantity', sa.Numeric(), nullable=False),
     sa.Column('blood_group', sa.Enum('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', name='blood_group_enum'), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('token_blocklist',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('jti', sa.String(), nullable=True),
+    sa.Column('create_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('user',
@@ -53,6 +59,7 @@ def upgrade():
     sa.Column('expiry', sa.DateTime(), nullable=True),
     sa.Column('quantity', sa.Numeric(), nullable=False),
     sa.Column('blood_group', sa.Enum('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', name='blood_group_enum'), nullable=False),
+    sa.Column('status', sa.Enum('Stored', 'Supplied', 'Expired', name='blood_status_enum'), nullable=True),
     sa.ForeignKeyConstraint(['donor_id'], ['donor.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -62,7 +69,7 @@ def upgrade():
     sa.Column('requested_by', sa.Integer(), nullable=False),
     sa.Column('quantity', sa.Numeric(), nullable=False),
     sa.Column('blood_group', sa.Enum('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', name='blood_group_enum'), nullable=False),
-    sa.Column('status', sa.Enum('Requested', 'Processing', 'Canclled', name='status_enum'), nullable=True),
+    sa.Column('status', sa.Enum('Requested', 'Completed', 'Cancelled', name='status_enum'), nullable=True),
     sa.Column('fulfilled_qty', sa.Numeric(), nullable=True),
     sa.ForeignKeyConstraint(['requested_by'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -78,6 +85,7 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_user_email'))
 
     op.drop_table('user')
+    op.drop_table('token_blocklist')
     op.drop_table('inventory')
     op.drop_table('donor')
     # ### end Alembic commands ###

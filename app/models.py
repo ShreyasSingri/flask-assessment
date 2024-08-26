@@ -7,7 +7,7 @@ class Donor(db.Model):
     name = db.Column(db.String[50])
     email = db.Column(db.String[50], unique = True, nullable = False)
     contact = db.Column(db.String[10], unique = True, nullable = False)
-    dob = db.Column(db.Date)
+    age = db.Column(db.Integer, nullable = False)
     blood_group = db.Column(db.Enum("O+","O-","A+","A-","B+","B-","AB+","AB-", name='blood_group_enum'), nullable=False)
 
 class User(db.Model):

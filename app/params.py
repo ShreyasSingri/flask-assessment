@@ -17,7 +17,7 @@ donor_request_model = api.model("donorRequest",{
     "name":fields.String(required=True, description='Name of Donor'),
     "email" : fields.String(required=True, description='Email ID of Donor'),
     "contact" : fields.String(required=True, description='Contact No of Donor'),
-    "dob": fields.Date(required=True, description='Date of birth of Donor'),
+    "age": fields.Integer(required=True, description='Age of Donor'),
     "blood_group":fields.String(required=True, description='Blood Group of Donor: O+, O-, A+, A-, B+, B-, AB+, AB-')
 })
 
@@ -46,7 +46,7 @@ donor_response_model = api.model("donorResponse",{
     "name":fields.String(required=True, description='Name of Donor'),
     "email" : fields.String(required=True, description='Email ID of Donor'),
     "contact" : fields.String(required=True, description='Contact No of Donor'),
-    "dob": fields.Date(required=True, description='Date of birth of Donor'),
+    "age": fields.Integer(required=True, description='Age of Donor'),
     "blood_group":fields.String(required=True, description='Blood Group of Donor: O+, O-, A+, A-, B+, B-, AB+, AB-')
 })
 

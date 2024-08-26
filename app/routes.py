@@ -16,7 +16,7 @@ from .params import (
     )
 from .models import Donor, User, BloodDonation, Inventory, Request, TokenBlocklist
 from pytz import timezone 
-from datetime import datetime
+from datetime import datetime, date
 
 userNs = Namespace("user")
 bankNs = Namespace("bank")
@@ -53,7 +53,7 @@ class Signup(Resource):
     def post(self):
         data = request.get_json()
         hashedPassword = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
-        user = User.query.filter_by(email=data.get('email'))
+        user = User.query.filter_by(email=data.get('email')).first()
         if user is not None:
             return {'message': 'User already registered'}, 400
         try:
@@ -70,7 +70,7 @@ class Login(Resource):
     @userNs.doc(description='Login for authorizition.')
     def post(self):
         data = request.get_json()
-        user = User.query.filter_by(data.get('email')).first()
+        user = User.query.filter_by(email=data.get('email')).first()
         if user and bcrypt.check_password_hash(user.password, data.get('password')):
             access_token = create_access_token(identity={'id':user.id, 'role':user.role})
             refresh_token = create_refresh_token(identity={'id':user.id, 'role':user.role})
@@ -81,7 +81,7 @@ class Login(Resource):
 class Refresh(Resource):
     @jwt_required(refresh=True)
     @userNs.doc(description='Generate new access_token for authorizition of all employees and hospitals. (Provide refresh token as Bearer token)')
-    def post(self):
+    def get(self):
         identity = get_jwt_identity()
         access_token = create_access_token(identity=identity)
         return jsonify(access_token=access_token)
@@ -90,7 +90,7 @@ class Refresh(Resource):
 class Logout(Resource):
     @jwt_required(verify_type=False)
     @userNs.doc(description='Logout and clear the access_token usablity')
-    def post(self):
+    def get(self):
         jwt = get_jwt()
         jti = jwt['jti']
         token = TokenBlocklist(jti=jti)
@@ -103,24 +103,24 @@ class AddDonor(Resource):
     @jwt_required()
     @userNs.expect(donor_request_model, validate=True)
     @userNs.doc(description='Add new donor')
-    # Specify the pre porcessing of the data into a list that will be of the format of response model
+    # Specify the pre porcessing of the data into a responce model
     @userNs.marshal_with(donor_response_model)
     def post(self):
         if not is_authorised(["User","DonorManager","BankManager"]):
             return {'message': 'Unauthorised Request'}, 403
         data = request.get_json()
-        donor = Donor.query.filter_by(email=data.get('email'))
+        donor = Donor.query.filter_by(email=data.get('email')).first()
         if donor is not None:
             return {'message': 'Donor already registered'}, 400
         try:
-            newDonor = Donor(name=data.get('name'),email=data.get('email'), contact = data.get('contact'), dob = data.get('dob'),blood_group = data.get('blood_group'))
+            newDonor = Donor(name=data.get('name'),email=data.get('email'), contact = data.get('contact'), age = data.get('age'),blood_group = data.get('blood_group'))
             db.session.add(newDonor)
             db.session.commit()
         except:
             return {'message':'Error while adding donor. Please check the data and try again'}, 401
         return newDonor, 200
 
-@bankNs.route("/addblood")
+@bankNs.route("/addBlood")
 class AddBlood(Resource):
     @jwt_required()
     @userNs.expect(blood_donation_request_model, validate=True)
@@ -150,7 +150,7 @@ class AddBlood(Resource):
             return {'message':'Error while adding blood donation. Please check the data and try again'}, 401
         return bloodDonation, 200
 
-@bankNs.route("/requestblood")
+@bankNs.route("/requestBlood")
 class RequestBlood(Resource):
     @jwt_required()
     @userNs.expect(blood_requirenment_request_model, validate=True)
@@ -169,7 +169,7 @@ class RequestBlood(Resource):
             return {'message':'Error while adding Blood Request. Please check the data and try again'}, 401
         return newRequest, 201
 
-@bankNs.route("/updatebloodreq")
+@bankNs.route("/updateBloodReq")
 class UpdateRequest(Resource):
     @jwt_required()
     @userNs.expect(update_blood_requirenment_request_model, validate=True)
@@ -188,23 +188,24 @@ class UpdateRequest(Resource):
         if data.get('fulfilled_qty'):
             if req.fulfilled_qty > data.get('fulfilled_qty'):
                 return {'message': 'New fulfilled quantity is less then already fulfilled quantity. please try again'}, 400
-            blood, qty = supplyBlood((req.fulfilled_qty - data.get('fulfilled_qty')),req['blood_group'])
+            blood, qty = supplyBlood((req.fulfilled_qty - data.get('fulfilled_qty')),req.blood_group)
             req.fulfilled_qty = req.fulfilled_qty+qty
             if not blood:
                 return  {'message': 'Insuffecient Inventory'}, 400
-        db.session.commit()
-        return {"message": "Blood request fulfilled", "request": marshal(req, request_blood_response_model), "blood_packet_IDs":blood}, 200
+            db.session.commit()
+            return {"message": "Blood request updated", "request": marshal(req, request_blood_response_model), "blood_packet_IDs":blood}, 200
+        return {"message": "Blood request updated"}, 200
 
-@bankNs.route("/completebloodreq/<int:id>")
+@bankNs.route("/completeBloodReq/<int:id>")
 class CompleteRequest(Resource):
     @jwt_required()
     @userNs.doc(description="Complete hospital's blood request")
     @userNs.marshal_with(request_blood_response_model)
-    def post(self, id):
+    def get(self, id):
         if not is_authorised(["User","InventoryManager","BankManager"]):
             return {'message': 'Unauthorised Request'}, 403
         req = Request.query.get(id)
-        blood, qty =  supplyBlood((req.fulfilled_qty - req.quantity),req['blood_group'])
+        blood, qty =  supplyBlood((req.fulfilled_qty - req.quantity),req.blood_group)
         if not blood:
             return  {'message': 'Insuffecient Inventory'}, 400
         req.fulfilled_qty = req.fulfilled_qty + qty
@@ -212,14 +213,14 @@ class CompleteRequest(Resource):
         db.session.commit()
         return {"message": "Blood request fulfilled", "request": marshal(req, request_blood_response_model), "blood_packet_IDs":blood}, 200
 
-@bankNs.route("/inventorystatus")
+@bankNs.route("/inventoryStatus")
 class InventoryStatus(Resource):
     @userNs.doc(description='Provide details of Inventory stored in blood bank')
     @userNs.marshal_list_with(inventory_response_model)
     def get(self):
         return Inventory.query.all(), 201
 
-@bankNs.route("/deleteblood/<int:id>")
+@bankNs.route("/deleteBlood/<int:id>")
 class DeleteBloodDonation(Resource):
     @jwt_required()
     @userNs.doc(description='Delete inacurate Blood Donation')
@@ -231,7 +232,7 @@ class DeleteBloodDonation(Resource):
         db.session.commit()
         return {'message': 'Blood donation deleted successfully'}, 200
 
-@bankNs.route("/deletedonaor/<int:id>")
+@bankNs.route("/deleteDonaor/<int:id>")
 class DeleteDonor(Resource):
     @jwt_required()
     @userNs.doc(description='Delete inacurate blood donor information')
@@ -243,7 +244,7 @@ class DeleteDonor(Resource):
         db.session.commit()
         return {'message': 'Donor deleted successfully'}, 200
 
-@bankNs.route("/updateexpired")
+@bankNs.route("/updateExpired")
 class ExpiredBlood(Resource):
     @jwt_required()
     @userNs.doc(description='Check for expired blood and update the database accordingly')
@@ -265,17 +266,17 @@ class ExpiredBlood(Resource):
         db.session.commit()
         return expired, 201
 
-@bankNs.route("/openrequests")
+@bankNs.route("/openRequests")
 class OpenRequests(Resource):
     @jwt_required()
     @userNs.doc(description='Get the list of blood requests that needs to be processed')
     @userNs.marshal_list_with(request_blood_response_model)
-    def post(self):
+    def get(self):
         if not is_authorised(["User","InventoryManager","BankManager","Hospital"]):
             return {'message': 'Unauthorised Request'}, 403
         identity = get_jwt_identity()
         res = None
-        if identity.role=='Hospital':
-            res = Request.query.filter_by(requested_by=identity.id, status="Requested").all()
+        if identity['role']=='Hospital':
+            res = Request.query.filter_by(requested_by=identity['id'], status="Requested").all()
         res = Request.query.filter_by(status="Requested").all()
         return res, 200
